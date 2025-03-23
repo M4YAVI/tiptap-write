@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 import { notFound } from "next/navigation"
 import Image from "next/image"
+import Link from "next/link"
 import { format } from "date-fns"
 import { Clock, Calendar, Tag } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -40,9 +41,11 @@ export default async function WritingPage({ params }: WritingPageProps) {
               <Clock className="h-4 w-4" />
               <span>{readingTime} min read</span>
             </div>
-            <Badge variant="secondary" className="capitalize">
-              {writing.category}
-            </Badge>
+            <Link href={`/category/${writing.category}`}>
+              <Badge variant="secondary" className="capitalize">
+                {writing.category}
+              </Badge>
+            </Link>
           </div>
 
           {writing.cover_image && (
@@ -53,6 +56,7 @@ export default async function WritingPage({ params }: WritingPageProps) {
                 fill
                 className="object-cover"
                 priority
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
             </div>
           )}
@@ -78,9 +82,9 @@ export default async function WritingPage({ params }: WritingPageProps) {
             <div className="flex flex-wrap gap-2 mb-8">
               <Tag className="h-4 w-4 mr-1" />
               {writing.tags?.map((tag: string) => (
-                <Badge key={tag} variant="outline">
-                  {tag}
-                </Badge>
+                <Link key={tag} href={`/tag/${tag}`}>
+                  <Badge variant="outline">#{tag}</Badge>
+                </Link>
               ))}
             </div>
           </div>

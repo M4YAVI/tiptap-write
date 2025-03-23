@@ -1,9 +1,9 @@
 import { Suspense } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { PenLine } from "lucide-react"
 import WritingGrid from "@/components/writing-grid"
 import { Skeleton } from "@/components/ui/skeleton"
+export const dynamic = 'force-dynamic'; // Ensure fresh data on every request
 
 export default function Home() {
   return (
@@ -13,12 +13,6 @@ export default function Home() {
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
           Craft your novels, thoughts, and reviews with our elegant writing platform. Share your ideas with the world.
         </p>
-        <Link href="/write">
-          <Button size="lg" className="gap-2">
-            <PenLine className="h-4 w-4" />
-            Start Writing
-          </Button>
-        </Link>
       </section>
 
       <section>

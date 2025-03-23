@@ -1,15 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { getUserStats } from "@/lib/supabase/writings"
-import { BookText, Clock, Hash } from "lucide-react"
+import { BookText, Clock, Hash, FileText } from "lucide-react"
 
 export async function WritingStats() {
   const { data } = await getUserStats()
 
   const stats = [
     {
-      title: "Total Writings",
+      title: "Published",
       value: data?.totalWritings || 0,
       icon: BookText,
+    },
+    {
+      title: "Drafts",
+      value: data?.totalDrafts || 0,
+      icon: FileText,
     },
     {
       title: "Total Words",
@@ -24,7 +29,7 @@ export async function WritingStats() {
   ]
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {stats.map((stat) => (
         <Card key={stat.title}>
           <CardHeader className="flex flex-row items-center justify-between pb-2">

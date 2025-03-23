@@ -4,10 +4,7 @@ import { useEditor, EditorContent } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Image from "@tiptap/extension-image"
 import Link from "@tiptap/extension-link"
-import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight"
 import { common, createLowlight } from "lowlight"
-
-const lowlight = createLowlight(common)
 import Placeholder from "@tiptap/extension-placeholder"
 import { Button } from "@/components/ui/button"
 import { Toggle } from "@/components/ui/toggle"
@@ -26,8 +23,11 @@ import {
   Undo,
   Redo,
 } from "lucide-react"
-import { uploadImage } from "@/lib/supabase/storage"
+import { uploadImage, validateImage } from "@/lib/supabase/storage"
 import { toast } from "@/components/ui/use-toast"
+import { CodeBlockExtension } from "./editor/code-block-extension"
+
+const lowlight = createLowlight(common)
 
 interface EditorProps {
   content: string
@@ -38,16 +38,21 @@ interface EditorProps {
 export function Editor({ content, onChange, placeholder = "Start writing..." }: EditorProps) {
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        // Disable the built-in code block
+        codeBlock: false,
+      }),
+      CodeBlockExtension.configure({
+        HTMLAttributes: {
+          class: "code-block",
+        },
+      }),
       Image.configure({
         allowBase64: true,
         inline: true,
       }),
       Link.configure({
         openOnClick: false,
-      }),
-      CodeBlockLowlight.configure({
-        lowlight,
       }),
       Placeholder.configure({
         placeholder,
@@ -56,6 +61,59 @@ export function Editor({ content, onChange, placeholder = "Start writing..." }: 
     content,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML())
+    },
+    // Add a paste handler directly to the editor
+    editorProps: {
+      handlePaste: (view, event) => {
+        const items = Array.from(event.clipboardData?.items || [])
+        const imageItems = items.filter((item) => item.type.startsWith("image"))
+
+        if (imageItems.length === 0) {
+          return false
+        }
+
+        event.preventDefault()
+
+        imageItems.forEach((item) => {
+          const file = item.getAsFile()
+          if (!file) return
+
+          const validation = validateImage(file)
+          if (!validation.valid) {
+            toast({
+              title: "Invalid file",
+              description: validation.error,
+              variant: "destructive",
+            })
+            return
+          }
+
+          toast({
+            title: "Uploading image...",
+            description: "Please wait while we upload your pasted image.",
+          })
+
+          uploadImage(file).then(({ data, error }) => {
+            if (error || !data) {
+              toast({
+                title: "Upload failed",
+                description: error?.message || "There was an error uploading your image.",
+                variant: "destructive",
+              })
+              return
+            }
+
+            editor?.chain().focus().setImage({ src: data.url }).run()
+
+            toast({
+              title: "Image uploaded",
+              description: "Your pasted image has been uploaded successfully.",
+            })
+          })
+        })
+
+        return true
+      },
     },
   })
 
@@ -73,8 +131,18 @@ export function Editor({ content, onChange, placeholder = "Start writing..." }: 
 
       const file = input.files[0]
 
+      const validation = validateImage(file)
+      if (!validation.valid) {
+        toast({
+          title: "Invalid file",
+          description: validation.error,
+          variant: "destructive",
+        })
+        return
+      }
+
       try {
-        const loadingToast = toast({
+        toast({
           title: "Uploading image...",
           description: "Please wait while we upload your image.",
         })
@@ -82,6 +150,7 @@ export function Editor({ content, onChange, placeholder = "Start writing..." }: 
         const { data, error } = await uploadImage(file)
 
         if (error) throw error
+        if (!data) throw new Error("No data returned from upload")
 
         editor.chain().focus().setImage({ src: data.url }).run()
 
@@ -93,7 +162,7 @@ export function Editor({ content, onChange, placeholder = "Start writing..." }: 
         console.error("Image upload error:", error)
         toast({
           title: "Upload failed",
-          description: "There was an error uploading your image.",
+          description: error instanceof Error ? error.message : "There was an error uploading your image.",
           variant: "destructive",
         })
       }
@@ -110,6 +179,10 @@ export function Editor({ content, onChange, placeholder = "Start writing..." }: 
     } else {
       editor.chain().focus().unsetLink().run()
     }
+  }
+
+  const addCodeBlock = () => {
+    editor.chain().focus().toggleCodeBlock().run()
   }
 
   return (
@@ -179,12 +252,7 @@ export function Editor({ content, onChange, placeholder = "Start writing..." }: 
         >
           <Quote className="h-4 w-4" />
         </Toggle>
-        <Toggle
-          size="sm"
-          pressed={editor.isActive("codeBlock")}
-          onPressedChange={() => editor.chain().focus().toggleCodeBlock().run()}
-          aria-label="Code Block"
-        >
+        <Toggle size="sm" pressed={editor.isActive("codeBlock")} onPressedChange={addCodeBlock} aria-label="Code Block">
           <Code className="h-4 w-4" />
         </Toggle>
         <Button size="sm" variant="ghost" onClick={addLink}>
